@@ -54,6 +54,9 @@ try:
 
 data = request.json
 
+
+# Obtener el resumen ejecutivo (nuevo campo)
+
 resumen_ejecutivo = data.get('resumen_ejecutivo', 'Resumen no generado.')
 
 
@@ -73,9 +76,14 @@ msg['From'] = SENDER_EMAIL
 
 msg['To'] = data['correo_proveedor']
 
+
+# (NUEVO) Usamos el resumen en el asunto para que sea más informativo
+
 msg['Subject'] = f"CRÍTICO | {data['tienda']} - {data['categoria']} - {resumen_ejecutivo}"
 
 
+
+# Añadimos 'quien_reporta' y 'resumen_ejecutivo' al cuerpo del correo
 
 cuerpo_html = f"""
 
