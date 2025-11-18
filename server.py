@@ -26,9 +26,9 @@ CORS(app)
 
 # CAMBIO CLAVE DE SEGURIDAD: Leer el correo y la contraseña de las variables de entorno de Render
 
-SENDER_EMAIL = os.environ.get('SENDER_EMAIL')
+SENDER_EMAIL = os.environ.get('proyectopersonaloxxo@gmail.com')
 
-SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD')
+SENDER_PASSWORD = os.environ.get('ekqrzjokpydqejrm')
 
 # ----------------------------------------------
 
@@ -239,4 +239,5 @@ port = int(os.environ.get('PORT', 5000))
 print(f"🚀 SERVIDOR PYTHON (FLASK) INICIADO (Modo Online) en puerto {port}")
 
 app.run(host='0.0.0.0', port=port)
+
 
