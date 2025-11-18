@@ -11,52 +11,69 @@ app = Flask(__name__)
 CORS(app)
 
 # --- CONFIGURACIÓN DE TU CORREO (GMAIL) ---
-# CAMBIO CLAVE DE SEGURIDAD: Leer el correo y la contraseña de las variables de entorno de Render
+# Leemos las variables. Si no existen, SENDER_EMAIL será None.
 SENDER_EMAIL = os.environ.get('proyectopersonaloxxo@gmail.com')  
 SENDER_PASSWORD = os.environ.get('ekqrzjokpydqejrm')
 # ----------------------------------------------
 
-# --- CONFIGURACIÓN DEL ARCHIVO DE HISTORIAL (Opcional en la nube) ---
+# --- CONFIGURACIÓN DEL ARCHIVO DE HISTORIAL ---
 CSV_FILE = 'reportes.csv'
 CSV_HEADERS = ['timestamp', 'tienda', 'quien_reporta', 'categoria', 'prioridad', 'resumen_ejecutivo', 'correo_proveedor', 'detalles']
 # ---------------------------------------------------------------------
 
+# --- INICIO DE RUTA DE DIAGNÓSTICO ---
+# Esta es una nueva ruta SÓLO para probar si las variables se leyeron.
+@app.route('/debug-vars')
+def debug_vars():
+    print("--- INICIANDO PRUEBA DE DEBUG ---")
+    
+    email_leido = os.environ.get('SENDER_EMAIL')
+    pass_leido = os.environ.get('SENDER_PASSWORD')
+
+    print(f"DEBUG: Variable SENDER_EMAIL leída como: {email_leido}")
+    
+    if pass_leido:
+        # Imprimimos solo el primer y último caracter por seguridad
+        print(f"DEBUG: Variable SENDER_PASSWORD leída como: {pass_leido[0]}***{pass_leido[-1]} (¡Encontrada!)")
+    else:
+        print("DEBUG: Variable SENDER_PASSWORD leída como: None (¡NO ENCONTRADA!)")
+        
+    print("--- FIN DE PRUEBA DE DEBUG ---")
+    
+    if email_leido and pass_leido:
+        return "VARIABLES ENCONTRADAS. Revisa los logs."
+    else:
+        return "ERROR: VARIABLES NO ENCONTRADAS. Revisa los logs."
+# --- FIN DE RUTA DE DIAGNÓSTICO ---
+
+
 @app.route('/enviar_correo', methods=['POST'])
 def enviar_correo():
+    
+    # Añadimos un print aquí también para ver el flujo
+    print("--- Se recibió una petición en /enviar_correo ---")
+
     try:
         data = request.json
         
-        # Obtener el resumen ejecutivo (nuevo campo)
+        # Obtener el resumen ejecutivo
         resumen_ejecutivo = data.get('resumen_ejecutivo', 'Resumen no generado.')
         
         # Validación de credenciales
         if not SENDER_EMAIL or not SENDER_PASSWORD:
+            # Si el código llega aquí, es 100% seguro que las variables son None
+            print("ERROR DE VALIDACIÓN: 'if not SENDER_EMAIL' falló. Las variables están vacías o son None.")
             return jsonify({"error": "Error de configuración: Correo o Contraseña de Aplicación faltante. Configura las variables de entorno en tu servicio de hosting (Render)."}), 500
 
         # 1. PREPARAR EL CORREO ELECTRÓNICO
+        # (El resto del código de envío sigue igual)
         msg = MIMEMultipart()
         msg['From'] = SENDER_EMAIL
         msg['To'] = data['correo_proveedor']
-        
-        # Usamos el resumen en el asunto para que sea más informativo
         msg['Subject'] = f"CRÍTICO | {data['tienda']} - {data['categoria']} - {resumen_ejecutivo}"
 
-        # Añadimos 'quien_reporta' y 'resumen_ejecutivo' al cuerpo del correo
         cuerpo_html = f"""
         <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; }}
-                .container {{ max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }}
-                .header {{ font-size: 24px; color: #D90000; }}
-                .resumen {{ font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #005691; border: 1px solid #e0f2fe; padding: 10px; background-color: #f0f8ff; border-radius: 4px;}}
-                .priority-Alta {{ color: #D90000; font-weight: bold; }}
-                .priority-Media {{ color: #F28C00; font-weight: bold; }}
-                .priority-Baja {{ color: #34A853; font-weight: bold; }}
-                .content {{ margin-top: 20px; }}
-                .details {{ background-color: #f9f9f9; border: 1px solid #eee; padding: 15px; border-radius: 4px; white-space: pre-wrap; }}
-            </style>
-        </head>
         <body>
             <div class="container">
                 <div class="header">Nuevo Reporte de Incidencia OXXO</div>
@@ -66,7 +83,7 @@ def enviar_correo():
                 <div class="content">
                     <p><strong>Tienda:</strong> {data['tienda']}</p>
                     <p><strong>Reportado por:</strong> {data['quien_reporta']}</p>
-                    <p><strong>Prioridad:</strong> <span class="priority-{data['prioridad']}">{data['prioridad'].upper()}</span></p>
+                    <p><strong>Prioridad:</strong> {data['prioridad'].upper()}</p>
                     <p><strong>Categoría:</strong> {data['categoria']}</p>
                     <hr>
                     <p><strong>Detalles del Reporte Completo:</strong></p>
@@ -76,7 +93,6 @@ def enviar_correo():
         </body>
         </html>
         """
-        
         msg.attach(MIMEText(cuerpo_html, 'html'))
 
         # 2. ENVIAR EL CORREO
@@ -91,22 +107,14 @@ def enviar_correo():
         try:
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             file_exists = os.path.isfile(CSV_FILE)
-            
             with open(CSV_FILE, 'a', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=CSV_HEADERS)
-                
                 if not file_exists:
                     writer.writeheader()
-                    
                 writer.writerow({
-                    'timestamp': now,
-                    'tienda': data['tienda'],
-                    'quien_reporta': data['quien_reporta'],
-                    'categoria': data['categoria'],
-                    'prioridad': data['prioridad'], 
-                    'resumen_ejecutivo': resumen_ejecutivo,
-                    'correo_proveedor': data['correo_proveedor'],
-                    'detalles': data['detalles']
+                    'timestamp': now, 'tienda': data['tienda'], 'quien_reporta': data['quien_reporta'],
+                    'categoria': data['categoria'], 'prioridad': data['prioridad'], 'resumen_ejecutivo': resumen_ejecutivo,
+                    'correo_proveedor': data['correo_proveedor'], 'detalles': data['detalles']
                 })
         except Exception as e_csv:
             print(f"ADVERTENCIA: Correo enviado, pero falló el guardado en CSV local: {e_csv}")
