@@ -53,7 +53,7 @@
             outline: none;
         }
         
-        /* INICIO DE CAMBIO: Estilos para el input de prioridad deshabilitado */
+        /* Estilos para el input de prioridad deshabilitado */
         .input-con-icono input[disabled] {
             background-color: #f9fafb; /* bg-gray-50 */
             font-weight: 600;
@@ -62,7 +62,6 @@
         .prioridad-Alta { color: #b91c1c; border-color: #fca5a5; background-color: #fee2e2; }
         .prioridad-Media { color: #b45309; border-color: #fdba74; background-color: #fffbeb; }
         .prioridad-Baja { color: #15803d; border-color: #86efac; background-color: #f0fdf4; }
-        /* FIN DE CAMBIO */
 
         /* Botón primario con mejores efectos */
         .btn-primary {
@@ -91,6 +90,23 @@
         .spinner {
             animation: spin 1s linear infinite;
         }
+        
+        /* Estilo para los botones de IA */
+        .btn-ia {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .btn-ia:hover:not(:disabled) {
+            background-color: #4338ca; /* indigo-700 */
+        }
+        .btn-ia:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -103,7 +119,7 @@
             </div>
 
             <h1 class="text-3xl font-bold text-gray-800">Generador de Reporte OXXO</h1>
-            <p class="text-gray-500 mt-2 text-sm">Sistemas y Enlaces - Servidor Local</p>
+            <p class="text-gray-500 mt-2 text-sm">Sistemas y Enlaces - Servidor Online</p>
         </header>
 
         <!-- FORMULARIO DE REPORTE (SIEMPRE VISIBLE) -->
@@ -121,7 +137,7 @@
                         <label for="tienda" class="block text-sm font-medium text-gray-700 mb-1">CR / Plaza / Tienda</label>
                         <div class="input-con-icono mt-1">
                             <i data-lucide="store"></i>
-                            <input type="text" id="tienda" name="tienda" class="w-full p-3 border rounded-md focus:ring-red-500 focus:border-red-500 uppercase" placeholder="EJ: 10MON">
+                            <input type="text" id="tienda" name="tienda" class="w-full p-3 border rounded-md focus:ring-red-500 focus:border-red-500 uppercase" placeholder="EJ: 10MON - Monclova C.">
                         </div>
                     </div>
                     
@@ -130,7 +146,7 @@
                         <label for="correo_proveedor" class="block text-sm font-medium text-gray-700 mb-1">Correo Proveedor</label>
                         <div class="input-con-icono mt-1">
                             <i data-lucide="mail"></i>
-                            <input type="email" id="correo_proveedor" name="correo_proveedor" placeholder="proveedor@empresa.com" class="w-full p-3 border rounded-md focus:ring-red-500 focus:border-red-500">
+                            <input type="email" id="correo_proveedor" name="correo_proveedor" placeholder="soporte.ti@ejemplo.com" class="w-full p-3 border rounded-md focus:ring-red-500 focus:border-red-500">
                         </div>
                     </div>
 
@@ -158,7 +174,7 @@
                         </select>
                     </div>
 
-                    <!-- INICIO DE CAMBIO: Prioridad Automática (ya no es manual) -->
+                    <!-- Prioridad Automática (ya no es manual) -->
                     <div>
                         <label for="prioridad_display" class="block text-sm font-medium text-gray-700 mb-1">Prioridad Asignada</label>
                         <div class="input-con-icono mt-1">
@@ -168,14 +184,20 @@
                             <input type="hidden" id="prioridad_hidden" name="prioridad" value="">
                         </div>
                     </div>
-                    <!-- FIN DE CAMBIO -->
                 </div>
 
                 <!-- Fila 3: Detalles (Textarea) -->
                 <div>
-                    <label for="detalles" class="block text-sm font-medium text-gray-700 mb-1">Descripción del Reporte</label>
-                    <textarea id="detalles" name="detalles" rows="8" class="w-full p-3 mt-1 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 font-mono text-sm" placeholder="Seleccione una categoría para cargar la plantilla..."></textarea>
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="detalles" class="block text-sm font-medium text-gray-700">Descripción del Reporte</label>
+                        <button type="button" id="btn-mejorar-ia" class="btn-ia text-xs flex items-center gap-1" disabled>
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                            <span id="btn-ia-text">Mejorar Texto con IA</span>
+                        </button>
+                    </div>
+                    <textarea id="detalles" name="detalles" rows="8" class="w-full p-3 mt-1 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 font-mono text-sm" placeholder="Describa el problema aquí..."></textarea>
                     <p id="plantilla-cargada" class="text-xs text-gray-500 text-right mt-1 hidden">Plantilla cargada.</p>
+                    <input type="hidden" id="resumen_ejecutivo_hidden" name="resumen_ejecutivo" value="">
                 </div>
 
                 <!-- Fila 4: Botón de Envío -->
@@ -192,6 +214,13 @@
     <script>
         lucide.createIcons();
 
+        // ----------------------------------------------------------------------------------
+        // IMPORTANTE: DEBES CAMBIAR ESTA URL DESPUÉS DE SUBIR TU SERVIDOR PYTHON A LA NUBE
+        // Esta es la URL de tu servicio de Render
+        // ----------------------------------------------------------------------------------
+        const SERVER_URL_BASE = 'https://oxxo-gg.onrender.com'; // <--- LÍNEA 319
+        // ----------------------------------------------------------------------------------
+
         const detallesTextarea = document.getElementById('detalles');
         const categoriaSelect = document.getElementById('categoria');
         const form = document.getElementById('reporte-form');
@@ -200,41 +229,104 @@
         const btnEnviar = document.getElementById('btn-enviar');
         const btnIcon = document.getElementById('btn-icon');
         const btnText = document.getElementById('btn-text');
-
-        // INICIO DE CAMBIO: Referencias a los campos de Prioridad
         const prioridadDisplay = document.getElementById('prioridad_display');
         const prioridadHidden = document.getElementById('prioridad_hidden');
-        // FIN DE CAMBIO
+        const resumenHidden = document.getElementById('resumen_ejecutivo_hidden');
+        const btnMejorarIA = document.getElementById('btn-mejorar-ia');
+        const btnIAText = document.getElementById('btn-ia-text');
 
-        // Función para cambiar la plantilla Y PRIORIDAD según la categoría
+        // URL y API Key para Gemini
+        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
+        const apiKey = ""; // API key se proporciona automáticamente en Canvas.
+
+        // Objeto con las plantillas
+        const plantillas = {
+            'Fallo de Equipo': 'Equipo Afectado: \nMarca y Modelo: \nNúmero de Serie: \nDescripción del Fallo:',
+            'Servicio/Aplicación': 'Servicio afectado (Depósitos, Pagos, App): \nHora del Fallo: \nDescripción del error o mensaje en pantalla:',
+            'Daño a Tienda': '[REPORTE DE DAÑOS]\n----------------------------------\n- ÁREA AFECTADA: [EJ: Fachada, Baños, Piso de venta]\n- TIPO DE DAÑO: [EJ: Vidrio roto, Fuga de agua, Grafiti]\n- ¿AFECTA OPERACIÓN?: [Sí/No]\n\nOBSERVACIONES:',
+            'Reporte de Enlaces': 'Adjunto se envía la plantilla de revisión de enlaces.\nSolicitamos que revisen los enlaces marcados en ROJO y confirmen su estado o la fecha de reparación.\n\nDetalles adicionales (Opcional):'
+        };
+
+        // Función para manejar el estado de los botones (enviando o cargando IA)
+        function setButtonState(button, isLoading, initialIcon, initialText, loadingText) {
+            button.disabled = isLoading;
+            const iconSpan = button.querySelector('i');
+            button.innerHTML = `<span id="btn-icon">${isLoading ? '<i data-lucide="loader-2" class="w-4 h-4 spinner"></i>' : `<i data-lucide="${initialIcon}" class="w-4 h-4"></i>`}</span> ${isLoading ? loadingText : initialText}`;
+            lucide.createIcons();
+        }
+
+        // Función de Mejora de Texto con IA (Gemini)
+        btnMejorarIA.addEventListener('click', async () => {
+            const textoOriginal = detallesTextarea.value.trim();
+            if (!textoOriginal || textoOriginal === 'Describa el problema aquí...') {
+                mostrarMensaje('error', 'Escribe primero los detalles del reporte para que la IA pueda mejorarlos.', 5000);
+                return;
+            }
+
+            setButtonState(btnMejorarIA, true, 'sparkles', 'Mejorar Texto con IA', 'Analizando...');
+            
+            const systemPrompt = "Actúa como un agente de soporte técnico de OXXO. Recibirás un texto informal o con errores. Tu trabajo es reescribirlo para que sea profesional, claro y conciso, manteniendo todos los detalles clave. NO añadas el encabezado de la plantilla, solo el texto mejorado.";
+            const userQuery = `Reescribe de forma profesional el siguiente reporte de tienda: "${textoOriginal}"`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const response = await fetch(GEMINI_API_URL + apiKey, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                const textoMejorado = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (textoMejorado) {
+                    detallesTextarea.value = textoMejorado;
+                    mostrarMensaje('success', '✅ Descripción del reporte mejorada con éxito por IA.', 5000);
+                } else {
+                    mostrarMensaje('error', '❌ La IA no pudo generar una mejora. Intenta con un texto más largo.', 5000);
+                }
+
+            } catch (error) {
+                console.error('Error al llamar a Gemini API (Mejorar Texto):', error);
+                mostrarMensaje('error', 'Error de conexión con el servicio de IA. Intenta de nuevo.', 5000);
+            } finally {
+                setButtonState(btnMejorarIA, false, 'sparkles', 'Mejorar Texto con IA', 'Analizando...');
+                // Restaurar el icono de envío si no estaba cargando
+                btnIcon.innerHTML = '<i data-lucide="send" class="w-5 h-5"></i>';
+                lucide.createIcons();
+            }
+        });
+
+
+        // Función que asigna plantilla, prioridad y activa/desactiva botones
         categoriaSelect.addEventListener('change', () => {
             const categoria = categoriaSelect.value;
             let plantilla = '';
-            
-            // INICIO DE CAMBIO: Lógica de Prioridad Automática
             let prioridadAsignada = '';
             let prioridadClase = '';
-
+            
             plantillaMsg.classList.add('hidden'); // Oculta el mensaje
+            btnMejorarIA.disabled = categoria === '';
 
+            // Lógica de Prioridad Automática
             switch (categoria) {
                 case 'Fallo de Equipo':
-                    plantilla = 'Equipo Afectado: \nMarca y Modelo: \nNúmero de Serie: \nDescripción del Fallo:';
-                    prioridadAsignada = 'Alta';
-                    prioridadClase = 'prioridad-Alta';
-                    break;
                 case 'Servicio/Aplicación':
-                    plantilla = 'Servicio afectado (Depósitos, Pagos, App): \nHora del Fallo: \nDescripción del error o mensaje en pantalla:';
+                    plantilla = plantillas[categoria] || '';
                     prioridadAsignada = 'Alta';
                     prioridadClase = 'prioridad-Alta';
                     break;
                 case 'Daño a Tienda':
-                    plantilla = '[REPORTE DE DAÑOS]\n----------------------------------\n- ÁREA AFECTADA: [EJ: Fachada, Baños, Piso de venta]\n- TIPO DE DAÑO: [EJ: Vidrio roto, Fuga de agua, Grafiti]\n- ¿AFECTA OPERACIÓN?: [Sí/No]\n\nOBSERVACIONES:';
+                    plantilla = plantillas[categoria] || '';
                     prioridadAsignada = 'Media';
                     prioridadClase = 'prioridad-Media';
                     break;
                 case 'Reporte de Enlaces':
-                    plantilla = 'Adjunto se envía la plantilla de revisión de enlaces.\nSolicitamos que revisen los enlaces marcados en ROJO y confirmen su estado o la fecha de reparación.\n\nDetalles adicionales (Opcional):';
+                    plantilla = plantillas[categoria] || '';
                     prioridadAsignada = 'Baja';
                     prioridadClase = 'prioridad-Baja';
                     break;
@@ -255,7 +347,6 @@
             if (prioridadClase) {
                 prioridadDisplay.classList.add(prioridadClase);
             }
-            // FIN DE CAMBIO
             
             if(categoria !== '') {
                 plantillaMsg.textContent = `Plantilla para "${categoria}" cargada.`;
@@ -263,7 +354,8 @@
             }
         });
 
-        // Función de Envío del Formulario
+
+        // FUNCIÓN CLAVE: Envío al Servidor Python y Generación de Resumen Ejecutivo (Gemini)
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -271,33 +363,66 @@
             const quienReportaInput = document.getElementById('quien_reporta');
             const correoProveedorInput = document.getElementById('correo_proveedor');
             
-            // INICIO DE CAMBIO: Validación usa el campo oculto de prioridad
+            // Validación
             if (!tiendaInput.value || !quienReportaInput.value || !categoriaSelect.value || !correoProveedorInput.value || !detallesTextarea.value || !prioridadHidden.value) {
-            // FIN DE CAMBIO
-                mostrarMensaje('error', 'Por favor, complete todos los campos requeridos.', 5000);
+                mostrarMensaje('error', 'Por favor, complete todos los campos requeridos (incluyendo el cuerpo del reporte y la categoría).', 5000);
                 return;
             }
+            
+            // 1. Mostrar estado de CARGANDO (SUMARIZANDO)
+            setButtonState(btnEnviar, true, 'send', 'Enviar Reporte', 'Generando Resumen IA...');
+            
+            // Deshabilitar botón de IA para evitar doble click
+            btnMejorarIA.disabled = true;
 
+            let resumenEjecutivo = 'Resumen no disponible.';
+            const textoParaResumir = detallesTextarea.value.trim();
+
+            // 2. Generar el Resumen Ejecutivo con Gemini
+            if (textoParaResumir.length > 50) {
+                const systemPromptResumen = "Eres un analista de soporte crítico. Recibirás un reporte detallado. Tu tarea es generar un ÚNICO resumen conciso, de no más de 15 palabras, para ser usado como ASUNTO de correo. Enfócate en la acción y el impacto. NO uses encabezados, solo el texto.";
+                const userQueryResumen = `Genera un resumen ejecutivo para este reporte: "${textoParaResumir}"`;
+
+                const payloadResumen = {
+                    contents: [{ parts: [{ text: userQueryResumen }] }],
+                    systemInstruction: { parts: [{ text: systemPromptResumen }] },
+                };
+
+                try {
+                    const responseResumen = await fetch(GEMINI_API_URL + apiKey, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payloadResumen)
+                    });
+
+                    const resultResumen = await responseResumen.json();
+                    resumenEjecutivo = resultResumen.candidates?.[0]?.content?.parts?.[0]?.text || 'Resumen no generado por IA.';
+                } catch (error) {
+                    console.error('Error en API de Resumen:', error);
+                    resumenEjecutivo = 'Resumen no generado (Fallo de IA).';
+                }
+            } else {
+                 resumenEjecutivo = 'Texto demasiado corto para resumir.';
+            }
+
+            // 3. Preparar los datos finales para el servidor Python
             const data = {
                 tienda: tiendaInput.value.toUpperCase(),
                 quien_reporta: quienReportaInput.value,
                 categoria: categoriaSelect.value,
-                // INICIO DE CAMBIO: Lee la prioridad del campo oculto
                 prioridad: prioridadHidden.value,
-                // FIN DE CAMBIO
                 correo_proveedor: correoProveedorInput.value,
-                detalles: detallesTextarea.value
+                detalles: detallesTextarea.value,
+                resumen_ejecutivo: resumenEjecutivo // <--- Campo crucial para el asunto y CSV
             };
 
-            // Mostrar estado de carga en el botón
-            btnEnviar.disabled = true;
-            btnText.textContent = 'Enviando...';
-            btnIcon.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 spinner"></i>';
-            lucide.createIcons();
+            // 4. Mostrar estado de CARGANDO (ENVIANDO)
+            setButtonState(btnEnviar, true, 'send', 'Enviar Reporte', 'Enviando Reporte...');
 
+
+            // 5. Envío al Servidor Python
             try {
-                // Envía los datos al servidor Python
-                const response = await fetch('http://https://oxxo-gg.onrender.com/enviar_correo', {
+                const response = await fetch(SERVER_URL_BASE + '/enviar_correo', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
@@ -306,32 +431,27 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    mostrarMensje('success', result.mensaje, 7000);
-                    form.reset(); // Limpia todo el formulario
-                    plantillaMsg.classList.add('hidden'); // Oculta el msg de plantilla
-                    // INICIO DE CAMBIO: Resetea el campo de prioridad visual
+                    mostrarMensaje('success', result.mensaje, 7000);
+                    form.reset(); 
+                    plantillaMsg.classList.add('hidden'); 
                     prioridadDisplay.value = '-- Seleccione Categoría --';
                     prioridadDisplay.classList.remove('prioridad-Alta', 'prioridad-Media', 'prioridad-Baja');
                     prioridadHidden.value = '';
-                    // FIN DE CAMBIO
-                    
                 } else {
-                    mostrarMensje('error', result.error, 10000);
+                    mostrarMensaje('error', result.error, 10000);
                 }
             } catch (error) {
-                console.error('Error al enviar:', error);
-                mostrarMensaje('error', `Error de conexión: El servidor (Python) no está activo o hay un error. Asegúrate de ejecutar 'python server.py'`, 10000);
+                console.error('Error al enviar a Flask:', error);
+                mostrarMensaje('error', `Error de conexión: El servidor Python online no está activo o hay un error.`, 10000);
             } finally {
-                // Restaurar botón
-                btnEnviar.disabled = false;
-                btnText.textContent = 'Enviar Reporte';
-                btnIcon.innerHTML = '<i data-lucide="send" class="w-5 h-5"></i>';
-                lucide.createIcons();
+                // Restaurar botones
+                setButtonState(btnEnviar, false, 'send', 'Enviar Reporte', 'Enviando Reporte...');
+                btnMejorarIA.disabled = false;
             }
         });
 
+        // Función para mostrar mensajes
         function mostrarMensaje(tipo, texto, duracion) {
-            // Clases de Tailwind mejoradas para alertas
             mensajeServidor.textContent = texto;
             mensajeServidor.classList.remove('hidden', 'success', 'error');
             
@@ -347,7 +467,11 @@
             }, duracion);
         }
 
+        // Inicializar iconos y estado al cargar
+        window.onload = () => { 
+            lucide.createIcons();
+        };
+
     </script>
 </body>
-
 </html>
